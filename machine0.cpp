@@ -11,7 +11,6 @@
 #include <unistd.h>
 #include <signal.h>
 #include <fstream>
-#include <sstream>
 #include <regex>
 
 using namespace std;
@@ -20,7 +19,7 @@ using namespace std;
 #define MAX 80			// Max length of commands
 #define PACKET 50		// Packet length to send data
 #define PORT 5000 + MACHINE_NUM	    // Port of TCP Control Server
-
+#define PORT_1 5001
 
 
 int main() {
@@ -75,6 +74,7 @@ int main() {
     // Machine is always running
     while(1) {
 
+        
 		// Loop for the first command which must be of 'port'
 
 		/* First Control Command must be of the port at which the client will open a TCP server.
@@ -90,9 +90,9 @@ int main() {
 
 			Y = 0;
             /* Iterate through all the spaces.
-				   Then get the port number and store it in a variable Y.
-				   The command must not have any other characters except spaces after the port number, else flag an error.
-				*/
+                Then get the port number and store it in a variable Y.
+                The command must not have any other characters except spaces after the port number, else flag an error.
+            */
             i = 0;
             while(cmnd[i] != ' ' && cmnd[i] != '\0'){
                 Y = 10*Y + (int)(cmnd[i] - '0');
@@ -101,12 +101,27 @@ int main() {
             if(Y>1024 && Y<65535){
                 break;
             }
+            else {
+                close(newctrlsock_fd);
+                continue;
+            }
         }
 
+        
+
+        // LOOP for the rest of the control commands until 'quit'
+
+		/*  This loop check for the command.
+		    Performs appropriate tasks like fork() and sends data over data socket
+		*/
         while(1) {
             char regex_str[MAX];
 
             recv(newctrlsock_fd, cmnd, 80, 0);
+
+            // TODO: If command is quit, then quit
+            // or else fork a child process, read the log file and then search using the regex
+
 
             // Get the regex expression from the grep command
             i = 5; j = 0;
@@ -122,6 +137,7 @@ int main() {
             cout << machine_num << "\n";
             string filename = string("machine.") + machine_num + ".log";
             logfile.open(filename, ios::in);
+
 
             // If file is open, read each line of the file and search for regex
             if (logfile.is_open()) {

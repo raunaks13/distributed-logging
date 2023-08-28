@@ -20,7 +20,7 @@ using namespace std;
 #define MACHINE_NUM 1
 #define MAX 80			// Max length of the control commands
 #define PACKET 20		// Packet length for data transfer
-#define PORT 8000 + MACHINE_NUM	   // Port of TCP Control Server
+#define PORT 5000 + MACHINE_NUM	   // Port of TCP Control Server
 #define PORT_0 5000 
 
 int main() {
