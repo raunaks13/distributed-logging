@@ -20,8 +20,8 @@ using namespace std;
 #define MACHINE_NUM 1
 #define MAX 80			// Max length of the control commands
 #define PACKET 20		// Packet length for data transfer
-#define PORT 5000 + MACHINE_NUM	   // Port of TCP Control Server
-#define PORT_0 5000 
+#define PORT 8000 + MACHINE_NUM	   // Port of TCP Control Server
+#define PORT_0 8000 
 
 int main() {
     int ctrlsock_fd, datasock_fd, newdatasock_fd;
@@ -58,8 +58,8 @@ int main() {
     // Send the port at which the machine will operate control channel
     string temp_str=to_string(PORT);
     char const* port= temp_str.c_str();
-    send(ctrlsock_fd, port, strlen(port)+1, 0);    
-
+    // int sz = send(ctrlsock_fd, port, strlen(port)+1, 0);    
+    // printf("%d\n", sz);
 
     // Prompt for grep commands
     cout << "[MACHINE " << MACHINE_NUM << "] Terminal Starting... \n";
@@ -79,6 +79,17 @@ int main() {
 
         send(ctrlsock_fd, mssg, strlen(mssg)+1, 0);
     
+        char return_msg[MAX];
+        char new_msg[MAX];
+        recv(ctrlsock_fd, return_msg, 80, 0);
+        i = 0; j = 0;
+        while(return_msg[i] != '\0'){
+                new_msg[j++] = return_msg[i];
+                i++;
+        }
+        new_msg[j] = '\0';
+
+        cout << new_msg << endl;
     }
 
     return 0;

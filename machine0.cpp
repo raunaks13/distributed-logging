@@ -12,14 +12,15 @@
 #include <signal.h>
 #include <fstream>
 #include <regex>
+#include <sstream>
 
 using namespace std;
 
 #define MACHINE_NUM 0
 #define MAX 80			// Max length of commands
 #define PACKET 50		// Packet length to send data
-#define PORT 5000 + MACHINE_NUM	    // Port of TCP Control Server
-#define PORT_1 5001
+#define PORT 8000 + MACHINE_NUM	    // Port of TCP Control Server
+#define PORT_1 8001
 
 
 int main() {
@@ -33,12 +34,22 @@ int main() {
 
     char mssg[MAX];
     char cmnd[MAX];
-    int i, j, flag, Y;
+    int i, j, flag, p, q;
     socklen_t clilen;
     fstream logfile;
 
+
+    // pid_t pid;
+    // fork();
+    // if (pid == 0) {
+    //     client;
+    // }
+    // else {
+    //     server;
+    // }
+
     // Creating control socket
-	if((ctrlsock_fd = socket(AF_INET, SOCK_STREAM, 0)) < 0){
+	if((ctrlsock_fd = socket(AF_INET, SOCK_STREAM, 0)) < 0){ // IPv4, TCP
 		perror("Socket creation failed\n");
 		exit(0);
 	}
@@ -49,8 +60,8 @@ int main() {
 	memset(&datacli_addr, 0, sizeof(datacli_addr));
 
     // Specifying the control server address
-	serv_addr.sin_family = AF_INET;
-	serv_addr.sin_addr.s_addr = INADDR_ANY;
+	serv_addr.sin_family = AF_INET; // IPv4
+	serv_addr.sin_addr.s_addr = INADDR_ANY; // any address
 	serv_addr.sin_port = htons(PORT);
 
     // Setting Socket options to reuse socket address
@@ -80,34 +91,39 @@ int main() {
 		/* First Control Command must be of the port at which the client will open a TCP server.
 		   Loop until we get the first command as port
 		*/
-		while(1){
-			clilen = sizeof(ctrlcli_addr);
-			// Accept control connection form client
-			newctrlsock_fd = accept(ctrlsock_fd, (struct sockaddr *)&ctrlcli_addr, &clilen);
+
+		// while(1){
+			
+            // printf("%d\n", newctrlsock_fd);
 
 			// Receive First Control command which is the PORT address of other machines
-			recv(newctrlsock_fd, cmnd, MAX, 0); 
+			// int sz = recv(newctrlsock_fd, cmnd, MAX, 0); 
+            // printf("%d\n", sz);
 
-			Y = 0;
+			// Y = 0;
             /* Iterate through all the spaces.
                 Then get the port number and store it in a variable Y.
                 The command must not have any other characters except spaces after the port number, else flag an error.
             */
-            i = 0;
-            while(cmnd[i] != ' ' && cmnd[i] != '\0'){
-                Y = 10*Y + (int)(cmnd[i] - '0');
-                i++;
-            }
-            if(Y>1024 && Y<65535){
-                break;
-            }
-            else {
-                close(newctrlsock_fd);
-                continue;
-            }
-        }
-
+            // i = 0;
+            // while(cmnd[i] != ' ' && cmnd[i] != '\0'){
+            //     Y = 10*Y + (int)(cmnd[i] - '0');
+            //     i++;
+            // }
+            // if(Y>1024 && Y<65535){
+            //     // printf("%d\n", Y);
+            //     break;
+            // }
+            // else {
+            //     close(newctrlsock_fd);
+            //     continue;
+            // }
+        // }
         
+
+        clilen = sizeof(ctrlcli_addr);
+        // Accept control connection from client
+        newctrlsock_fd = accept(ctrlsock_fd, (struct sockaddr *)&ctrlcli_addr, &clilen);
 
         // LOOP for the rest of the control commands until 'quit'
 
@@ -115,6 +131,7 @@ int main() {
 		    Performs appropriate tasks like fork() and sends data over data socket
 		*/
         while(1) {
+
             char regex_str[MAX];
 
             recv(newctrlsock_fd, cmnd, 80, 0);
@@ -122,8 +139,8 @@ int main() {
             // TODO: If command is quit, then quit
             // or else fork a child process, read the log file and then search using the regex
 
-
             // Get the regex expression from the grep command
+            // TODO: generalize regex to support generalized grep statements (e.g. with quotes)
             i = 5; j = 0;
             while(cmnd[i] != '\0'){
                 regex_str[j++] = cmnd[i];
@@ -134,10 +151,9 @@ int main() {
             // Open the log file
             string temp_str = to_string(MACHINE_NUM);
             char const* machine_num = temp_str.c_str();
-            cout << machine_num << "\n";
+            cout << "Machine " << machine_num << "\n";
             string filename = string("machine.") + machine_num + ".log";
             logfile.open(filename, ios::in);
-
 
             // If file is open, read each line of the file and search for regex
             if (logfile.is_open()) {
@@ -145,11 +161,30 @@ int main() {
                 int k = 0;
                 while(getline(logfile, line))
                 {
+                    string init_msg;
                     regex expr (regex_str); // the pattern
                     bool match = regex_search (line, expr);
-                    cout << match << "\n";
+                    // cout << match << "\n";
                     k++;
+                    
+                    if (match == 1) {
+                        string init_msg = filename + "\t" + line;
+                    
+                        char send_msg[MAX];
 
+                        p = 0; q = 0;
+                        while(init_msg[p] != '\0'){
+                            send_msg[q++] = init_msg[p];
+                            p++;
+                        }
+                        send_msg[q++] = '\0';
+
+                        printf("%s\n", init_msg.c_str());
+                        cout << send_msg << endl;
+
+                        int szz = send(newctrlsock_fd, send_msg, strlen(send_msg)+1, 0);
+                        // cout << szz << "\n";
+                    }
                     if(k==5) break;
                 }
             }
