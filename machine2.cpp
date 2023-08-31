@@ -17,7 +17,7 @@
 
 using namespace std;
 
-#define MACHINE_NUM 1
+#define MACHINE_NUM 2
 #define MAX 200			// Max length of commands
 #define MY_PORT 8000 + MACHINE_NUM	    // Port of TCP Control Server
 #define PORT_0 8000

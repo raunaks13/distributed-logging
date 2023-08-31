@@ -36,6 +36,10 @@ int main() {
     int client_ctrlsock_fd;
     struct sockaddr_in cli_addr, ctrlserv_addr, dataserv_addr;
     
+    // Find the log filename
+    string temp_str = to_string(MACHINE_NUM);
+    char const* machine_num = temp_str.c_str();
+    string filename = string("machine.") + machine_num + ".log";
 
     pid_t pid;
     if ((pid = fork()) < 0) {
@@ -95,18 +99,52 @@ int main() {
             // Send grep command
             send(client_ctrlsock_fd, mssg, strlen(mssg)+1, 0);
         
-            // Receive input from other machines on the grep command
-            char return_msg[MAX];
-            char new_msg[MAX];
-            recv(client_ctrlsock_fd, return_msg, MAX, 0);
-            i = 0; j = 0;
-            while(return_msg[i] != '\0'){
-                    new_msg[j++] = return_msg[i];
-                    i++;
-            }
-            new_msg[j] = '\0';
+            // Fork a child process to grep on its own log
+            if(fork()==0) {
+                fstream logfile;
+                logfile.open(filename, ios::in);
 
-            cout << new_msg << endl;
+                char regex_str[MAX];
+                i = 5; j = 0;
+                while(mssg[i] != '\0'){
+                    regex_str[j++] = mssg[i];
+                    i++;
+                }
+                regex_str[j] = '\0';
+
+                if (logfile.is_open()) {
+                    string line;
+                    int k = 0;
+
+                    while(getline(logfile, line)) {
+                        regex expr (regex_str); // the pattern
+                        bool match = regex_search (line, expr);
+                        if(match) {
+                            string init_msg = filename + "\t" + line;
+                            k++;
+                            cout << init_msg << endl;
+                        }
+                        if (k==5) break;
+                    }
+                    logfile.close();
+                }
+                exit(0);
+            }
+            else {
+                // Receive input from other machines on the grep command
+                char return_msg[MAX];
+                char new_msg[MAX];
+                recv(client_ctrlsock_fd, return_msg, MAX, 0);
+
+                i = 0; j = 0;
+                while(return_msg[i] != '\0'){
+                        new_msg[j++] = return_msg[i];
+                        i++;
+                }
+                new_msg[j] = '\0';
+
+                cout << new_msg << endl;
+            }
         }
     }
 
@@ -187,10 +225,7 @@ int main() {
                 regex_str[j] = '\0';
 
                 // Open the log file
-                string temp_str = to_string(MACHINE_NUM);
-                char const* machine_num = temp_str.c_str();
                 cout << "Machine " << machine_num << "\n";
-                string filename = string("machine.") + machine_num + ".log";
                 logfile.open(filename, ios::in);
 
                 // If file is open, read each line of the file and search for regex
@@ -202,7 +237,6 @@ int main() {
 
                     while(getline(logfile, line))
                     {
-                        string init_msg;
                         regex expr (regex_str); // the pattern
                         bool match = regex_search (line, expr);
                         k++;
