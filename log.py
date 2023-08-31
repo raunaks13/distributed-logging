@@ -2,8 +2,8 @@ import logging
 import lorem
 import random
 
-MACHINE_NUM = 0
-LINES = 500
+MACHINE_NUM = 1
+LINES = 1000
 
 logging.basicConfig(filename=f"machine.{MACHINE_NUM}.log",
                     # filemode='a',
@@ -27,7 +27,7 @@ known_message_list = [("E", "This is an error message"),
 # Generate LINES number of logging lines in the log file.
 # For every 10th iteration, generate a known message from the known_message_list, or generate lorem ipsum with DEBUG level
 for i in range(LINES):
-    if i % 10 == 0:
+    if i % 5 == 0:
         known_message = random.choice(known_message_list)
         message_level = known_message[0]
         message = known_message[1]
