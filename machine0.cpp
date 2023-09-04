@@ -26,6 +26,55 @@ using namespace std;
 #define PORT_1 8001
 
 
+char* remove_leading_spaces(string cmnd, char *mssg) {
+
+    // Handling the leading spaces
+    int i=0;
+    while(cmnd[i]==' ' || cmnd[i]=='\t') i++;
+    int j=0;
+    while(cmnd[i] != '\0'){
+        mssg[j++] = cmnd[i];
+        i++;
+    }
+    mssg[j] = '\0';
+
+    return mssg;
+}
+
+void grep(char *read_msg, char **args) {
+
+    int pipefd[2];
+    pipe(pipefd);
+    pid_t grep_pid, wpid;
+
+    // Fork and run the grep command via execvp system call. 
+    // Redirect the output from the standard output file (terminal) through pipe
+    if((grep_pid=fork()) == 0) {
+        
+        close(pipefd[0]);
+        dup2(pipefd[1], 1);
+        close(pipefd[1]);
+        execvp(args[0], args);
+        exit(0);
+    }
+    else {
+        close(pipefd[1]);
+        // fcntl(pipefd[0], F_SETFL, fcntl(pipefd[0], F_GETFL) | O_NONBLOCK);
+        wait(&grep_pid);
+    }
+
+    int byte_read_count = read(pipefd[0], read_msg, sizeof(read_msg));
+    close(pipefd[0]);
+
+    // if (byte_read_count > 0) {
+    //     string init_msg = filename + "\t" + string(read_msg);
+    //     file << "[1] Own: " << init_msg << endl;
+    // }
+
+    // Adding null character to the end
+    int last_index = byte_read_count/sizeof(read_msg[0]);
+    read_msg[last_index] = '\0';
+}
 
 int main() {
     /*
@@ -50,14 +99,12 @@ int main() {
         exit(0);
     }
 
-
     if (pid==0) {
         /*
             Write Client side of Machine, where a user can query
         */
 
         string cmnd;
-        char mssg[MAX];
         int i, j;
 
         ofstream file("machine0_client.txt");
@@ -76,7 +123,7 @@ int main() {
         // Specifying the address of the control server at server
         ctrlserv_addr.sin_family = AF_INET;
         ctrlserv_addr.sin_addr.s_addr = INADDR_ANY;
-        ctrlserv_addr.sin_port = htons(PORT_1);
+        ctrlserv_addr.sin_port = htons(PORT_1); // 8001
 
         // Connecting to the control server
         while(1) {
@@ -91,19 +138,12 @@ int main() {
             cout << "> ";
             getline(cin, cmnd);
 
-            // Handling the leading spaces
-            i=0;
-            while(cmnd[i]==' ' || cmnd[i]=='\t') i++;
-            j=0;
-            while(cmnd[i] != '\0'){
-                mssg[j++] = cmnd[i];
-                i++;
-            }
-            mssg[j] = '\0';
+            char mssg[MAX];
+            remove_leading_spaces(cmnd, mssg);
 
             // Send grep command
             send(client_ctrlsock_fd, mssg, strlen(mssg)+1, 0);
-        
+
             // Fork a child process to grep on its own log
             if(fork()==0) {
                 fstream logfile;
@@ -123,58 +163,24 @@ int main() {
                 args[i] = NULL;
 
                 if (logfile.is_open()) {
-                    int pipefd[2];
-                    pipe(pipefd);
-                    pid_t grep_pid, wpid;
-
-                    // Fork and run the grep command via execvp system call. 
-                    // Redirect the output from the standard output file (terminal) through pipe
-                    if((grep_pid=fork()) == 0) {
-                        
-                        close(pipefd[0]);
-                        dup2(pipefd[1], 1);
-                        close(pipefd[1]);
-                        execvp(args[0], args);
-                        exit(0);
-                    }
-                    else {
-                        close(pipefd[1]);
-                        // fcntl(pipefd[0], F_SETFL, fcntl(pipefd[0], F_GETFL) | O_NONBLOCK);
-                        wait(&grep_pid);
-                    }
-
+                    
                     char read_msg[MAX];
-                    int byte_read_count = read(pipefd[0], read_msg, sizeof(read_msg));
-                    close(pipefd[0]);
-
-                    // Adding null character to the end
-                    int last_index = byte_read_count/sizeof(read_msg[0]);
-                    read_msg[last_index] = '\0';
-
-                    // if (byte_read_count > 0) {
-                    //     string init_msg = filename + "\t" + string(read_msg);
-                    //     file << "[1] Own: " << init_msg << endl;
-                    // }
+                    grep(read_msg, args);
                     
                     string init_msg = filename + ": " + read_msg;
                     file << "[1] Own: " << init_msg << endl;
+                    cout << "Own: " << init_msg << endl;
                 }
+
                 logfile.close();
                 exit(0);
             }
             else {
                 // Receive input from other machines on the grep command
                 char return_msg[MAX];
-                char new_msg[MAX];
                 recv(client_ctrlsock_fd, return_msg, MAX, 0);
-
-                i = 0; j = 0;
-                while(return_msg[i] != '\0'){
-                    new_msg[j++] = return_msg[i];
-                    i++;
-                }
-                new_msg[j] = '\0';
-                file << "[2] Received: " << new_msg << endl;
+                file << "[2] Received: " << return_msg << endl;
+                cout << "Received: " << return_msg << endl;
             }
         }
         file.close();
@@ -209,7 +215,6 @@ int main() {
         serv_addr.sin_family = AF_INET; // IPv4
         serv_addr.sin_addr.s_addr = INADDR_ANY; // any address
         serv_addr.sin_port = htons(MY_PORT);
-
 
         // Setting Socket options to reuse socket address
         int var = 1;
@@ -280,38 +285,8 @@ int main() {
                 // If file is open, read each line of the file and search for regex
                 // TODO: Send through a data socket. Currently sent through control socket
                 if (logfile.is_open()) {
-                    int pipefd[2];
-                    pipe(pipefd);
-                    pid_t grep_pid;
-
-
-                    // Fork and run the grep command via execvp system call. 
-                    // Redirect the output from the standard output file (terminal) through pipe
-                    if((grep_pid=fork()) == 0) {
-                        
-                        close(pipefd[0]);
-                        dup2(pipefd[1], 1);
-                        close(pipefd[1]);
-                        int status_code = execvp(args[0], args);
-                        // TODO: Error handling is status_code == -1
-                        // cout << "Status code: " << status_code << endl;
-
-                        exit(0);
-                    }
-                    else {
-                        close(pipefd[1]);
-                        // fcntl(pipefd[0], F_SETFL, fcntl(pipefd[0], F_GETFL) | O_NONBLOCK);
-                        wait(&grep_pid);
-                    }
-
                     char read_msg[MAX];
-                    int byte_read_count = read(pipefd[0], read_msg, sizeof(read_msg));
-                    close(pipefd[0]);
-
-                    // Adding null character to the end
-                    int last_index = byte_read_count/sizeof(read_msg[0]);
-                    read_msg[last_index] = '\0';
-
+                    grep(read_msg, args);
 
                     // if (byte_read_count > 0) {
                         // string send_msg = filename + "\t" + string(read_msg);
@@ -327,46 +302,6 @@ int main() {
                     string send_msg = filename + ": " + read_msg;
                     send(server_newctrlsock_fd, send_msg.c_str(), strlen(send_msg.c_str())+1, 0);
                     file << "Sent: " << send_msg << endl;
-
-
-
-                    /*
-                    while(getline(logfile, line))
-                    {   
-                        regex expr (regex_str); // the pattern
-                        bool match = regex_search (line, expr);
-                        k++;
-                        
-                        if (match == 1) {
-                            string init_msg = filename + "\t" + line;
-                        
-                            char send_msg[MAX];
-
-                            p = 0; q = 0;
-                            while(init_msg[p] != '\0'){
-                                send_msg[q++] = init_msg[p];
-                                p++;
-                            }
-                            send_msg[q++] = '\0';
-
-                            // printf("%s\n", init_msg.c_str());
-                            // cout << send_msg << endl;
-
-                            send(server_newctrlsock_fd, send_msg, strlen(send_msg)+1, 0);
-                            file << "Sent: " << send_msg << endl;
-                            total_matches++;
-                        }
-                        if(k == 5) break;
-                    }
-                    
-                    if(total_matches < 1) {
-                        // If there are no maches, send empty string
-                        char send_msg[MAX];
-                        send_msg[0] = '\0';
-                        send(server_newctrlsock_fd, send_msg, strlen(send_msg)+1, 0);
-                        cout << "Sent: " << send_msg << endl;
-                    }
-                    */
                     logfile.close();
                 }
                 
@@ -374,51 +309,6 @@ int main() {
             file.close();
         }
     }
-
-    
-
-    
-
-
-    
-
-        
-		// Loop for the first command which must be of 'port'
-
-		/* First Control Command must be of the port at which the client will open a TCP server.
-		   Loop until we get the first command as port
-		*/
-
-		// while(1){
-			
-            // printf("%d\n", newctrlsock_fd);
-
-			// Receive First Control command which is the PORT address of other machines
-			// int sz = recv(newctrlsock_fd, cmnd, MAX, 0); 
-            // printf("%d\n", sz);
-
-			// Y = 0;
-            /* Iterate through all the spaces.
-                Then get the port number and store it in a variable Y.
-                The command must not have any other characters except spaces after the port number, else flag an error.
-            */
-            // i = 0;
-            // while(cmnd[i] != ' ' && cmnd[i] != '\0'){
-            //     Y = 10*Y + (int)(cmnd[i] - '0');
-            //     i++;
-            // }
-            // if(Y>1024 && Y<65535){
-            //     // printf("%d\n", Y);
-            //     break;
-            // }
-            // else {
-            //     close(newctrlsock_fd);
-            //     continue;
-            // }
-        // }
-        
-
-        
 
     return 0;
 }

@@ -1,2 +1,2 @@
-Sent: machine.1.log: 422
+Sent: machine.1.log: 71
 

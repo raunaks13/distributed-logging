@@ -244,8 +244,8 @@ int main() {
             */
             while(1) {
 
-                recv(server_newctrlsock_fd, cmnd, MAX, 0);
-
+                int sz = recv(server_newctrlsock_fd, cmnd, MAX, 0);
+                cout << sz
                 // TODO: If command is quit, then quit
                 // or else fork a child process, read the log file and then search using the regex
 

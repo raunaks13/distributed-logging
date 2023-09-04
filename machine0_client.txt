@@ -1,4 +1,4 @@
-[2] Received: machine.1.log: 422
+[2] Received: machine.1.log: 71
 
-[1] Own: machine.0.log: 416
+[1] Own: machine.0.log: 70
 
