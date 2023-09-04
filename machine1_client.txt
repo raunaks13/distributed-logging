@@ -1,0 +1,4 @@
+[1] Own: machine.1.log: 1
+
+[2] Received: machine.0.log: 1
+

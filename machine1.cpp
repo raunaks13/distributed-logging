@@ -9,6 +9,9 @@
 #include <arpa/inet.h>
 #include <netdb.h>
 #include <unistd.h>
+#include <sys/types.h>
+#include <sys/wait.h>
+#include <fcntl.h> 
 #include <signal.h>
 #include <fcntl.h>
 #include <fstream>
@@ -18,7 +21,7 @@
 using namespace std;
 
 #define MACHINE_NUM 1
-#define MAX 200			// Max length of commands
+#define MAX 100			// Max length of commands
 #define MY_PORT 8000 + MACHINE_NUM	    // Port of TCP Control Server
 #define PORT_0 8000
 
@@ -55,7 +58,9 @@ int main() {
 
        string cmnd;
        char mssg[MAX];
-        int i, j;
+       int i, j;
+
+       ofstream file("machine1_client.txt");
        
        // Creating the control socket
         if((client_ctrlsock_fd = socket(AF_INET, SOCK_STREAM, 0)) < 0){
@@ -104,30 +109,58 @@ int main() {
                 fstream logfile;
                 logfile.open(filename, ios::in);
 
-                char regex_str[MAX];
-                i = 5; j = 0;
-                while(mssg[i] != '\0'){
-                    regex_str[j++] = mssg[i];
-                    i++;
-                }
-                regex_str[j] = '\0';
+                char *args[MAX];
+                char *word;
+                word = strtok (mssg," ");
+				i = 0;
+				while (word != NULL){
+					args[i++] = word;
+				    word = strtok (NULL, " ");
+				}
+				// Append the filename and NULL in the end
+				args[i++] = (char*)filename.c_str();
+                args[i++] = (char*)"-c";
+                args[i] = NULL;
 
                 if (logfile.is_open()) {
-                    string line;
-                    int k = 0;
+                    int pipefd[2];
+                    pipe(pipefd);
+                    pid_t grep_pid;
+                        
 
-                    while(getline(logfile, line)) {
-                        regex expr (regex_str); // the pattern
-                        bool match = regex_search (line, expr);
-                        if(match) {
-                            string init_msg = filename + "\t" + line;
-                            k++;
-                            cout << init_msg << endl;
-                        }
-                        if (k==5) break;
+                    // Fork and run the grep command via execvp system call. 
+                    // Redirect the output from the standard output file (terminal) through pipe
+                    if((grep_pid=fork()) == 0) {
+                        
+                        close(pipefd[0]);
+                        dup2(pipefd[1], 1);
+                        close(pipefd[1]);
+                        execvp(args[0], args);
+                        exit(0);
                     }
-                    logfile.close();
+                    else {
+                        close(pipefd[1]);
+                        wait(&grep_pid);
+                    }
+
+                    char read_msg[MAX];
+                    int byte_read_count = read(pipefd[0], read_msg, sizeof(read_msg));
+                    close(pipefd[0]);
+
+                    // Adding null character to the end
+                    int last_index = byte_read_count/sizeof(read_msg[0]);
+                    read_msg[last_index] = '\0';
+
+                    // if (byte_read_count > 0) {
+                    //     total_matches++;
+                        // string init_msg = filename + "\t" + string(read_msg);
+                        // file << "[1] Own: " << init_msg << endl;
+                    // }
+
+                    string init_msg = filename + ": " + read_msg;
+                    file << "[1] Own: " << init_msg << endl;        
                 }
+                logfile.close();
                 exit(0);
             }
             else {
@@ -138,14 +171,14 @@ int main() {
 
                 i = 0; j = 0;
                 while(return_msg[i] != '\0'){
-                        new_msg[j++] = return_msg[i];
-                        i++;
+                    new_msg[j++] = return_msg[i];
+                    i++;
                 }
                 new_msg[j] = '\0';
-
-                cout << new_msg << endl;
+                file << "[2] Received: " << new_msg << endl;
             }
         }
+        file.close();
     }
 
 
@@ -159,6 +192,8 @@ int main() {
         int i, j, flag, p, q;
         socklen_t clilen;
         fstream logfile;
+
+        ofstream file("machine1_server.txt");
 
        // Creating control socket
         if((server_ctrlsock_fd = socket(AF_INET, SOCK_STREAM, 0)) < 0){ // IPv4, TCP
@@ -215,7 +250,7 @@ int main() {
                 // or else fork a child process, read the log file and then search using the regex
 
                 // Get the regex expression from the grep command
-                // TODO: generalize regex to support generalized grep statements (e.g. with quotes)
+                /*
                 char regex_str[MAX];
                 i = 5; j = 0;
                 while(cmnd[i] != '\0'){
@@ -223,20 +258,77 @@ int main() {
                     i++;
                 }
                 regex_str[j] = '\0';
+                */
+
+
+                char *args[MAX];
+                char *word;
+                word = strtok (cmnd," ");
+				i = 0;
+				while (word != NULL){
+					args[i++] = word;
+				    word = strtok (NULL, " ");
+				}
+				// Append the filename and NULL in the end
+				args[i++] = (char*)filename.c_str();
+                args[i++] = (char*)"-c";
+                args[i] = NULL;
+
 
                 // Open the log file
-                cout << "Machine " << machine_num << "\n";
                 logfile.open(filename, ios::in);
 
                 // If file is open, read each line of the file and search for regex
                 // TODO: Send through a data socket. Currently sent through control socket
                 if (logfile.is_open()) {
-                    string line;
-                    int total_matches = 0;
-                    int k = 0;
+                    int pipefd[2];
+                    pipe(pipefd);
+                    pid_t grep_pid, wpid;
 
+                    
+                    if((grep_pid=fork()) == 0) {
+                        
+                        close(pipefd[0]);
+                        dup2(pipefd[1], 1);
+                        close(pipefd[1]);
+                        int status_code = execvp(args[0], args);
+                        // TODO: Error handling is status_code == -1
+                        // file << "Status code: " << status_code << endl;
+
+                        exit(0);
+                    }
+                    else {
+                        close(pipefd[1]);
+                        // fcntl(pipefd[0], F_SETFL, fcntl(pipefd[0], F_GETFL) | O_NONBLOCK);
+                        wait(&grep_pid);
+                    }
+
+                    char read_msg[MAX];
+                    int byte_read_count = read(pipefd[0], read_msg, sizeof(read_msg));
+                    close(pipefd[0]);
+
+                    // Adding null character to the end
+                    int last_index = byte_read_count/sizeof(read_msg[0]);
+                    read_msg[last_index] = '\0';
+
+                    // if (byte_read_count > 0) {
+                    //     string send_msg = filename + "\t" + string(read_msg);
+                    //     send(server_newctrlsock_fd, send_msg.c_str(), strlen(send_msg.c_str())+1, 0);
+                    //     file << "Sent: " << send_msg << endl;
+                    // }
+                    // else {
+                    //     char send_msg[MAX] = {'\0'};
+                    //     send(server_newctrlsock_fd, send_msg, strlen(send_msg)+1, 0);
+                    //     file << "Sent: " << send_msg << endl;
+                    // }
+
+                    string send_msg = filename + ": " + read_msg;
+                    send(server_newctrlsock_fd, send_msg.c_str(), strlen(send_msg.c_str())+1, 0);
+                    file << "Sent: " << send_msg << endl;
+
+                    /*
                     while(getline(logfile, line))
-                    {
+                    {   
                         regex expr (regex_str); // the pattern
                         bool match = regex_search (line, expr);
                         k++;
@@ -257,19 +349,24 @@ int main() {
                             // cout << send_msg << endl;
 
                             send(server_newctrlsock_fd, send_msg, strlen(send_msg)+1, 0);
+                            file << "Sent: " << send_msg << endl;
                             total_matches++;
                         }
                         if(k == 5) break;
                     }
+                    
                     if(total_matches < 1) {
                         // If there are no maches, send empty string
                         char send_msg[MAX];
                         send_msg[0] = '\0';
                         send(server_newctrlsock_fd, send_msg, strlen(send_msg)+1, 0);
+                        cout << "Sent: " << send_msg << endl;
                     }
+                    */
                     logfile.close();
                 }
             }
+            file.close();
         }
     }
 
