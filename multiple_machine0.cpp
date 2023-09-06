@@ -26,19 +26,22 @@ using namespace std;
 #define MY_PORT 8000 + MACHINE_NUM	    // Port of TCP Control Server
 #define PORT_1 8001
 
-char* get_ip_from_domain(char* domain) {
+char* get_ip_from_domain(string domain) {
 	struct hostent *ip;
 	struct in_addr **adr;
 
+    char domain_name[domain.length()+1];
+    strcpy(domain_name, domain.c_str());
+
 	// DNS query for IP address of the domain
-	ip = gethostbyname(domain);
+	ip = gethostbyname(domain_name);
 	if(ip == NULL){
 		printf("[Error] Incorrect Domain Name");
 		exit(0);
 	}
 	adr = (struct in_addr **)ip->h_addr_list;
     
-    cout << domain << inet_ntoa(*adr[0]) << endl;
+    // cout << domain << inet_ntoa(*adr[0]) << endl;
 	return inet_ntoa(*adr[0]);
 }
 
@@ -99,8 +102,9 @@ int main() {
       datasock_fd = sends the result of grep to other machines
     */
 
-    vector<string> v = { "raunaks3@fa23-cs425-3701.cs.illinois.edu", "raunaks3@fa23-cs425-3702.cs.illinois.edu" };
-    vector<int> ports = { 5001, 5002};
+    vector<string> domains = { "fa23-cs425-3701.cs.illinois.edu", 
+                                "fa23-cs425-3702.cs.illinois.edu" 
+                             };
 
     int server_ctrlsock_fd, datasock_fd, server_newctrlsock_fd;
     struct sockaddr_in serv_addr, ctrlcli_addr, datacli_addr;
@@ -138,8 +142,9 @@ int main() {
             remove_leading_spaces(cmnd, mssg);
             strcpy(mssg_for_curr_machine, mssg);
             // cout << mssg_for_curr_machine << endl;
+            int total_matches = 0;
 
-            for(int k = 0;k<2;k++) {
+            for(int k = 0;k<domains.size();k++) {
                 if(k == MACHINE_NUM) {
                     cout << "Retrieving log data from current machine." << endl;
                     fstream logfile;
@@ -188,8 +193,7 @@ int main() {
 
                     // Specifying the address of the control server at server
                     ctrlserv_addr.sin_family = AF_INET;
-                    char domain[MAX] = "fa23-cs425-3701.cs.illinois.edu";
-                    ctrlserv_addr.sin_addr.s_addr = inet_addr(get_ip_from_domain(domain));
+                    ctrlserv_addr.sin_addr.s_addr = inet_addr(get_ip_from_domain(domains[k]));
                     ctrlserv_addr.sin_port = htons(PORT_1); // 8001
 
                     // Connecting to the control server
@@ -217,31 +221,7 @@ int main() {
         }
     
         file.close();
-
-    //    // Creating the control socket
-    //     if((client_ctrlsock_fd = socket(AF_INET, SOCK_STREAM, 0)) < 0){
-    //         perror("Socket creation failed\n");
-    //         exit(0);
-    //     }
-
-    //     // Initializing the socket addresses to 0
-    //     memset(&ctrlserv_addr, 0, sizeof(ctrlserv_addr));
-    //     memset(&dataserv_addr, 0, sizeof(dataserv_addr));
-    //     memset(&cli_addr, 0, sizeof(cli_addr));
-
-    //     // Specifying the address of the control server at server
-    //     ctrlserv_addr.sin_family = AF_INET;
-    //     ctrlserv_addr.sin_addr.s_addr = INADDR_ANY;
-    //     ctrlserv_addr.sin_port = htons(PORT_1); // 8001
-
-    //     // Connecting to the control server
-    //     while(1) {
-    //         int connect_status = connect(client_ctrlsock_fd, (struct sockaddr *)&ctrlserv_addr, sizeof(ctrlserv_addr));
-    //         if( connect_status == 0)
-    //             break;
-    //     } 
     }
-
 
     else {
         /*
@@ -307,18 +287,6 @@ int main() {
 
                 // TODO: If command is quit, then quit
                 // or else fork a child process, read the log file and then search using the regex
-
-                // Get the regex expression from the grep command
-                /*
-                char regex_str[MAX];
-                i = 5; j = 0;
-                while(cmnd[i] != '\0'){
-                    regex_str[j++] = cmnd[i];
-                    i++;
-                }
-                regex_str[j] = '\0';
-                */
-
 
                 char *args[MAX];
                 char *word;
