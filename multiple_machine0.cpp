@@ -26,6 +26,21 @@ using namespace std;
 #define MY_PORT 8000 + MACHINE_NUM	    // Port of TCP Control Server
 #define PORT_1 8001
 
+char* get_ip_from_domain(char* domain) {
+	struct hostent *ip;
+	struct in_addr **adr;
+
+	// DNS query for IP address of the domain
+	ip = gethostbyname(domain);
+	if(ip == NULL){
+		printf("[Error] Incorrect Domain Name");
+		exit(0);
+	}
+	adr = (struct in_addr **)ip->h_addr_list;
+    
+    cout << domain << inet_ntoa(*adr[0]) << endl;
+	return inet_ntoa(*adr[0]);
+}
 
 char* remove_leading_spaces(string cmnd, char *mssg) {
 
@@ -173,7 +188,8 @@ int main() {
 
                     // Specifying the address of the control server at server
                     ctrlserv_addr.sin_family = AF_INET;
-                    ctrlserv_addr.sin_addr.s_addr = inet_addr("172.22.157.255");
+                    char domain[MAX] = "fa23-cs425-3701.cs.illinois.edu";
+                    ctrlserv_addr.sin_addr.s_addr = inet_addr(get_ip_from_domain(domain));
                     ctrlserv_addr.sin_port = htons(PORT_1); // 8001
 
                     // Connecting to the control server
