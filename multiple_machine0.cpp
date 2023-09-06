@@ -21,10 +21,11 @@
 
 using namespace std;
 
-#define MACHINE_NUM 0
+#define MACHINE_NUM 1
 #define MAX 100			// Max length of commands
 #define MY_PORT 8000 + MACHINE_NUM	    // Port of TCP Control Server
-#define PORT_1 8001
+#define PORT_1 8002
+
 
 char* get_ip_from_domain(string domain) {
 	struct hostent *ip;
@@ -45,6 +46,7 @@ char* get_ip_from_domain(string domain) {
 	return inet_ntoa(*adr[0]);
 }
 
+
 char* remove_leading_spaces(string cmnd, char *mssg) {
 
     // Handling the leading spaces
@@ -59,6 +61,7 @@ char* remove_leading_spaces(string cmnd, char *mssg) {
 
     return mssg;
 }
+
 
 void grep(char *read_msg, char **args) {
 
@@ -78,22 +81,17 @@ void grep(char *read_msg, char **args) {
     }
     else {
         close(pipefd[1]);
-        // fcntl(pipefd[0], F_SETFL, fcntl(pipefd[0], F_GETFL) | O_NONBLOCK);
         wait(&grep_pid);
     }
 
     int byte_read_count = read(pipefd[0], read_msg, sizeof(read_msg));
     close(pipefd[0]);
 
-    // if (byte_read_count > 0) {
-    //     string init_msg = filename + "\t" + string(read_msg);
-    //     file << "[1] Own: " << init_msg << endl;
-    // }
-
     // Adding null character to the end
     int last_index = byte_read_count/sizeof(read_msg[0]);
     read_msg[last_index] = '\0';
 }
+
 
 int main() {
     /*
@@ -112,7 +110,7 @@ int main() {
     // Find the log filename
     string temp_str = to_string(MACHINE_NUM);
     char const* machine_num = temp_str.c_str();
-    string filename = string("machine.") + machine_num + ".log";
+    string filename = string("MP1 Demo Data FA22/vm") + machine_num + ".log";
 
     pid_t pid;
     if ((pid = fork()) < 0) {
@@ -141,10 +139,11 @@ int main() {
 
             remove_leading_spaces(cmnd, mssg);
             strcpy(mssg_for_curr_machine, mssg);
-            // cout << mssg_for_curr_machine << endl;
+
             int total_matches = 0;
 
-            for(int k = 0;k<domains.size();k++) {
+            for(int k = 1; k <= domains.size(); k++) {
+
                 if(k == MACHINE_NUM) {
                     cout << "Retrieving log data from current machine." << endl;
                     fstream logfile;
@@ -167,10 +166,11 @@ int main() {
                         
                         char read_msg[MAX];
                         grep(read_msg, args);
+
+                        total_matches += stoi(read_msg);
                         
-                        string init_msg = filename + ": " + read_msg;
-                        file << "[1] Own: " << init_msg << endl;
-                        cout << "Own: " << init_msg << endl;
+                        string print_msg = "VM" + to_string(MACHINE_NUM) + ": " + read_msg;
+                        cout << print_msg;
                     }
 
                     logfile.close();
@@ -193,7 +193,8 @@ int main() {
 
                     // Specifying the address of the control server at server
                     ctrlserv_addr.sin_family = AF_INET;
-                    ctrlserv_addr.sin_addr.s_addr = inet_addr(get_ip_from_domain(domains[k]));
+                    ctrlserv_addr.sin_addr.s_addr = INADDR_ANY;
+                    // ctrlserv_addr.sin_addr.s_addr = inet_addr(get_ip_from_domain(domains[k]));
                     ctrlserv_addr.sin_port = htons(PORT_1); // 8001
 
                     // Connecting to the control server
@@ -206,18 +207,22 @@ int main() {
                     // Send grep command
                     cout << "Sending: " << mssg << endl;
                     int sz = send(client_ctrlsock_fd, mssg, strlen(mssg)+1, 0);
-                    // cout << sz << endl;
 
                     // Receive input from other machines on the grep command
                     cout << "Retrieving log data from machine " << k << endl;
                     char return_msg[MAX];
                     int sz2 = recv(client_ctrlsock_fd, return_msg, MAX, 0);
-                    // cout << sz2 << endl;
+
+                    total_matches += stoi(return_msg);
                     
-                    file << "[2] Received: " << return_msg << endl;
-                    cout << "Received: " << return_msg << endl;
+                    string print_msg = "VM" + to_string(k) + ": " + return_msg;
+                    cout << print_msg;
+
+                    close(client_ctrlsock_fd);
                 }
             }
+
+            cout << "Total Matches: " << total_matches << endl << endl;
         }
     
         file.close();
@@ -271,67 +276,46 @@ int main() {
 
         // Machine is always running
         while(1) {
-            
+
             clilen = sizeof(ctrlcli_addr);
             // Accept control connection from client
             server_newctrlsock_fd = accept(server_ctrlsock_fd, (struct sockaddr *)&ctrlcli_addr, &clilen);
 
-            // LOOP for the control commands until 'quit'
-
-            /*  This loop check for the command.
-                Performs appropriate tasks like fork() and sends data over data socket
-            */
-            while(1) {
-
-                recv(server_newctrlsock_fd, cmnd, MAX, 0);
-
-                // TODO: If command is quit, then quit
-                // or else fork a child process, read the log file and then search using the regex
-
-                char *args[MAX];
-                char *word;
-                word = strtok (cmnd," ");
-                i = 0;
-                while (word != NULL){
-                    args[i++] = word;
-                    word = strtok (NULL, " ");
-                }
-                // Append the filename and NULL in the end
-                args[i++] = (char*)filename.c_str();
-                args[i++] = (char*)"-c";
-                args[i] = NULL;
-
-                // Open the log file
-                logfile.open(filename, ios::in);
+            recv(server_newctrlsock_fd, cmnd, MAX, 0);
 
 
-                // If file is open, read each line of the file and search for regex
-                // TODO: Send through a data socket. Currently sent through control socket
-                if (logfile.is_open()) {
-                    char read_msg[MAX];
-                    grep(read_msg, args);
-
-                    // if (byte_read_count > 0) {
-                        // string send_msg = filename + "\t" + string(read_msg);
-                        // send(server_newctrlsock_fd, send_msg.c_str(), strlen(send_msg.c_str())+1, 0);
-                        // file << "Sent: " << send_msg << endl;
-                    // }
-                    // else {
-                    //     char send_msg[MAX] = {'\0'};
-                    //     send(server_newctrlsock_fd, send_msg, strlen(send_msg)+1, 0);
-                    //     file << "Sent: " << send_msg << endl;
-                    // }
-
-                    string send_msg = filename + ": " + read_msg;
-                    send(server_newctrlsock_fd, send_msg.c_str(), strlen(send_msg.c_str())+1, 0);
-                    file << "Sent: " << send_msg << endl;
-                    cout << "Sent: " << send_msg << endl;
-                    logfile.close();
-                }
-                
+            char *args[MAX];
+            char *word;
+            word = strtok (cmnd," ");
+            i = 0;
+            while (word != NULL){
+                args[i++] = word;
+                word = strtok (NULL, " ");
             }
-            file.close();
+            // Append the filename and NULL in the end
+            args[i++] = (char*)filename.c_str();
+            args[i++] = (char*)"-c";
+            args[i] = NULL;
+
+            // Open the log file
+            logfile.open(filename, ios::in);
+
+
+            // If file is open, read each line of the file and search for regex
+            // TODO: Send through a data socket. Currently sent through control socket
+            if (logfile.is_open()) {
+                char send_msg[MAX];
+                grep(send_msg, args);
+
+
+                send(server_newctrlsock_fd, send_msg, strlen(send_msg)+1, 0);
+                file << "Sent: " << send_msg << endl;
+                cout << "Sent: " << send_msg << endl;
+                logfile.close();
+            }
+            
         }
+            file.close();
     }
 
     return 0;
