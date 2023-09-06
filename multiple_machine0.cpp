@@ -241,7 +241,7 @@ int main() {
 
         ofstream file("machine0_server.txt");
 
-       // Creating control socket
+        // Creating control socket
         if((server_ctrlsock_fd = socket(AF_INET, SOCK_STREAM, 0)) < 0){ // IPv4, TCP
             perror("Socket creation failed\n");
             exit(0);
