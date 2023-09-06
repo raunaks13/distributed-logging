@@ -245,7 +245,7 @@ int main() {
             while(1) {
 
                 int sz = recv(server_newctrlsock_fd, cmnd, MAX, 0);
-                cout << sz
+                // cout << cmnd << endl;
                 // TODO: If command is quit, then quit
                 // or else fork a child process, read the log file and then search using the regex
 
@@ -274,6 +274,8 @@ int main() {
                 args[i++] = (char*)"-c";
                 args[i] = NULL;
 
+                for (int f=0; f < i; f++)
+                    cout << args[f] << endl;
 
                 // Open the log file
                 logfile.open(filename, ios::in);
@@ -285,6 +287,7 @@ int main() {
                     pipe(pipefd);
                     pid_t grep_pid, wpid;
 
+                    cout << "Logfile is open. Perform execvp" << endl;
                     
                     if((grep_pid=fork()) == 0) {
                         
@@ -306,6 +309,7 @@ int main() {
                     char read_msg[MAX];
                     int byte_read_count = read(pipefd[0], read_msg, sizeof(read_msg));
                     close(pipefd[0]);
+                    // cout << read_msg << endl;
 
                     // Adding null character to the end
                     int last_index = byte_read_count/sizeof(read_msg[0]);
@@ -323,7 +327,9 @@ int main() {
                     // }
 
                     string send_msg = filename + ": " + read_msg;
-                    send(server_newctrlsock_fd, send_msg.c_str(), strlen(send_msg.c_str())+1, 0);
+                    // cout << send_msg << endl;
+                    int sz2 = send(server_newctrlsock_fd, send_msg.c_str(), strlen(send_msg.c_str())+1, 0);
+                    // cout << sz2 << send_msg << endl;
                     file << "Sent: " << send_msg << endl;
 
                     /*

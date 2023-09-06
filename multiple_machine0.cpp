@@ -83,12 +83,12 @@ int main() {
       newctrlsock_fd = connection to socket between client and server is established after the accept command
       datasock_fd = sends the result of grep to other machines
     */
+
+    vector<string> v = { "raunaks3@fa23-cs425-3701.cs.illinois.edu", "raunaks3@fa23-cs425-3702.cs.illinois.edu" };
+    vector<int> ports = { 5001, 5002};
+
     int server_ctrlsock_fd, datasock_fd, server_newctrlsock_fd;
     struct sockaddr_in serv_addr, ctrlcli_addr, datacli_addr;
-
-    int client_ctrlsock_fd;
-    struct sockaddr_in cli_addr, ctrlserv_addr, dataserv_addr;
-    // vector<sockaddr_in> cli_addrlist, ctrlserv_addrlist, dataserv_addrlist;
 
     // Find the log filename
     string temp_str = to_string(MACHINE_NUM);
@@ -106,86 +106,124 @@ int main() {
             Write Client side of Machine, where a user can query
         */
 
-        string cmnd;
+        ofstream file("machine0_client.txt");
         int i, j;
 
-        ofstream file("machine0_client.txt");
-       
-       // Creating the control socket
-        if((client_ctrlsock_fd = socket(AF_INET, SOCK_STREAM, 0)) < 0){
-            perror("Socket creation failed\n");
-            exit(0);
-        }
-
-        // Initializing the socket addresses to 0
-        memset(&ctrlserv_addr, 0, sizeof(ctrlserv_addr));
-        memset(&dataserv_addr, 0, sizeof(dataserv_addr));
-        memset(&cli_addr, 0, sizeof(cli_addr));
-
-        // Specifying the address of the control server at server
-        ctrlserv_addr.sin_family = AF_INET;
-        ctrlserv_addr.sin_addr.s_addr = INADDR_ANY;
-        ctrlserv_addr.sin_port = htons(PORT_1); // 8001
-
-        // Connecting to the control server
-        while(1) {
-            int connect_status = connect(client_ctrlsock_fd, (struct sockaddr *)&ctrlserv_addr, sizeof(ctrlserv_addr));
-            if( connect_status == 0)
-                break;
-        }
-    
         // Prompt for grep commands
         cout << "[MACHINE " << MACHINE_NUM << "] Terminal Starting... \n";
         while(1) {
+            string cmnd;
+
             cout << "> ";
             getline(cin, cmnd);
 
             char mssg[MAX];
+            char mssg_for_curr_machine[MAX];
+
             remove_leading_spaces(cmnd, mssg);
+            strcpy(mssg_for_curr_machine, mssg);
+            // cout << mssg_for_curr_machine << endl;
 
-            // Send grep command
-            send(client_ctrlsock_fd, mssg, strlen(mssg)+1, 0);
+            for(int k = 0;k<2;k++) {
+                if(k == MACHINE_NUM) {
+                    cout << "Retrieving log data from current machine." << endl;
+                    fstream logfile;
+                    logfile.open(filename, ios::in);
 
-            // Fork a child process to grep on its own log
-            if(fork()==0) {
-                fstream logfile;
-                logfile.open(filename, ios::in);
+                    char *args[MAX];
+                    char *word;
+                    word = strtok (mssg_for_curr_machine, " ");
+                    i = 0;
+                    while (word != NULL){
+                        args[i++] = word;
+                        word = strtok (NULL, " ");
+                    }
+                    // Append the filename and NULL in the end
+                    args[i++] = (char*)filename.c_str();
+                    args[i++] = (char*)"-c";
+                    args[i] = NULL;
 
-                char *args[MAX];
-                char *word;
-                word = strtok (mssg," ");
-				i = 0;
-				while (word != NULL){
-					args[i++] = word;
-				    word = strtok (NULL, " ");
-				}
-				// Append the filename and NULL in the end
-				args[i++] = (char*)filename.c_str();
-                args[i++] = (char*)"-c";
-                args[i] = NULL;
+                    if (logfile.is_open()) {
+                        
+                        char read_msg[MAX];
+                        grep(read_msg, args);
+                        
+                        string init_msg = filename + ": " + read_msg;
+                        file << "[1] Own: " << init_msg << endl;
+                        cout << "Own: " << init_msg << endl;
+                    }
 
-                if (logfile.is_open()) {
-                    
-                    char read_msg[MAX];
-                    grep(read_msg, args);
-                    
-                    string init_msg = filename + ": " + read_msg;
-                    file << "[1] Own: " << init_msg << endl;
-                    cout << "Own: " << init_msg << endl;
+                    logfile.close();
+                    // exit(0);
                 }
+                else {
 
-                logfile.close();
-                exit(0);
-            }
-            else {
-                // Receive input from other machines on the grep command
-                char return_msg[MAX];
-                recv(client_ctrlsock_fd, return_msg, MAX, 0);
-                file << "[2] Received: " << return_msg << endl;
-                cout << "Received: " << return_msg << endl;
+                    int client_ctrlsock_fd;
+                    struct sockaddr_in cli_addr, ctrlserv_addr, dataserv_addr;
+
+                    if((client_ctrlsock_fd = socket(AF_INET, SOCK_STREAM, 0)) < 0) {
+                        perror("Socket creation failed\n");
+                        // exit(0);
+                        continue;
+                    }
+
+                    memset(&ctrlserv_addr, 0, sizeof(ctrlserv_addr));
+                    memset(&dataserv_addr, 0, sizeof(dataserv_addr));
+                    memset(&cli_addr, 0, sizeof(cli_addr));
+
+                    // Specifying the address of the control server at server
+                    ctrlserv_addr.sin_family = AF_INET;
+                    ctrlserv_addr.sin_addr.s_addr = inet_addr("172.22.157.255");
+                    ctrlserv_addr.sin_port = htons(PORT_1); // 8001
+
+                    // Connecting to the control server
+                    while(1) {
+                        int connect_status = connect(client_ctrlsock_fd, (struct sockaddr *)&ctrlserv_addr, sizeof(ctrlserv_addr));
+                        if( connect_status == 0)
+                            break;
+                    }
+
+                    // Send grep command
+                    cout << "Sending: " << mssg << endl;
+                    int sz = send(client_ctrlsock_fd, mssg, strlen(mssg)+1, 0);
+                    // cout << sz << endl;
+
+                    // Receive input from other machines on the grep command
+                    cout << "Retrieving log data from machine " << k << endl;
+                    char return_msg[MAX];
+                    int sz2 = recv(client_ctrlsock_fd, return_msg, MAX, 0);
+                    // cout << sz2 << endl;
+                    
+                    file << "[2] Received: " << return_msg << endl;
+                    cout << "Received: " << return_msg << endl;
+                }
             }
         }
+    
         file.close();
+
+    //    // Creating the control socket
+    //     if((client_ctrlsock_fd = socket(AF_INET, SOCK_STREAM, 0)) < 0){
+    //         perror("Socket creation failed\n");
+    //         exit(0);
+    //     }
+
+    //     // Initializing the socket addresses to 0
+    //     memset(&ctrlserv_addr, 0, sizeof(ctrlserv_addr));
+    //     memset(&dataserv_addr, 0, sizeof(dataserv_addr));
+    //     memset(&cli_addr, 0, sizeof(cli_addr));
+
+    //     // Specifying the address of the control server at server
+    //     ctrlserv_addr.sin_family = AF_INET;
+    //     ctrlserv_addr.sin_addr.s_addr = INADDR_ANY;
+    //     ctrlserv_addr.sin_port = htons(PORT_1); // 8001
+
+    //     // Connecting to the control server
+    //     while(1) {
+    //         int connect_status = connect(client_ctrlsock_fd, (struct sockaddr *)&ctrlserv_addr, sizeof(ctrlserv_addr));
+    //         if( connect_status == 0)
+    //             break;
+    //     } 
     }
 
 
@@ -235,10 +273,9 @@ int main() {
         listen(server_ctrlsock_fd, 10);
         cout << "Server Running...\n";
 
-
         // Machine is always running
         while(1) {
-
+            
             clilen = sizeof(ctrlcli_addr);
             // Accept control connection from client
             server_newctrlsock_fd = accept(server_ctrlsock_fd, (struct sockaddr *)&ctrlcli_addr, &clilen);
@@ -270,13 +307,13 @@ int main() {
                 char *args[MAX];
                 char *word;
                 word = strtok (cmnd," ");
-				i = 0;
-				while (word != NULL){
-					args[i++] = word;
-				    word = strtok (NULL, " ");
-				}
-				// Append the filename and NULL in the end
-				args[i++] = (char*)filename.c_str();
+                i = 0;
+                while (word != NULL){
+                    args[i++] = word;
+                    word = strtok (NULL, " ");
+                }
+                // Append the filename and NULL in the end
+                args[i++] = (char*)filename.c_str();
                 args[i++] = (char*)"-c";
                 args[i] = NULL;
 
@@ -304,6 +341,7 @@ int main() {
                     string send_msg = filename + ": " + read_msg;
                     send(server_newctrlsock_fd, send_msg.c_str(), strlen(send_msg.c_str())+1, 0);
                     file << "Sent: " << send_msg << endl;
+                    cout << "Sent: " << send_msg << endl;
                     logfile.close();
                 }
                 
