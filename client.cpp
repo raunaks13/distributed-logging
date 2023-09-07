@@ -97,7 +97,15 @@ char* remove_leading_spaces(string cmnd, char *mssg) {
 int main(int argc, char *argv[]) {
 
     vector<string> domains = { "fa23-cs425-3701.cs.illinois.edu", 
-                                "fa23-cs425-3702.cs.illinois.edu" 
+                                "fa23-cs425-3702.cs.illinois.edu",
+                                "fa23-cs425-3703.cs.illinois.edu" 
+                                "fa23-cs425-3704.cs.illinois.edu" 
+                                "fa23-cs425-3705.cs.illinois.edu" 
+                                "fa23-cs425-3706.cs.illinois.edu" 
+                                "fa23-cs425-3707.cs.illinois.edu" 
+                                "fa23-cs425-3708.cs.illinois.edu" 
+                                "fa23-cs425-3709.cs.illinois.edu" 
+                                "fa23-cs425-3710.cs.illinois.edu" 
                              };
 
 
@@ -176,8 +184,8 @@ int main(int argc, char *argv[]) {
 
                 // Specifying the address of the control server at server
                 ctrlserv_addr.sin_family = AF_INET;
-                ctrlserv_addr.sin_addr.s_addr = INADDR_ANY;
-                // ctrlserv_addr.sin_addr.s_addr = inet_addr(get_ip_from_domain(domains[k]));
+                // ctrlserv_addr.sin_addr.s_addr = INADDR_ANY;
+                ctrlserv_addr.sin_addr.s_addr = inet_addr(get_ip_from_domain(domains[k-1]));
                 ctrlserv_addr.sin_port = htons(PORT);
 
                 // Connecting to the control server
