@@ -1,17 +1,11 @@
-#include <iostream>
-#include <stdlib.h>
-#include <sys/types.h>
-#include <sys/time.h>
-#include <sys/socket.h>
-#include <netinet/in.h>
-#include <arpa/inet.h>
-#include <netdb.h>
+#include <bits/stdc++.h>
 #include <unistd.h>
 #include <sys/types.h>
+#include <sys/socket.h>
+#include <sys/types.h>
 #include <sys/wait.h>
-#include <fcntl.h>
-#include <fstream>
-#include <bits/stdc++.h>
+#include <netdb.h>
+
 
 using namespace std;
 
@@ -64,7 +58,6 @@ int main(int argc, char *argv[]) {
 
     char mssg[MAX];
     char cmnd[MAX];
-    int i, j, flag, p, q;
     socklen_t clilen;
     fstream logfile;
 
@@ -110,12 +103,10 @@ int main(int argc, char *argv[]) {
 
         recv(server_newctrlsock_fd, cmnd, MAX, 0);
 
-        cout << cmnd << endl;
 
         char *args[MAX];
-        char *word;
-        word = strtok (cmnd," ");
-        i = 0;
+        char *word = strtok (cmnd," ");
+        int i = 0;
         while (word != NULL){
             args[i++] = word;
             word = strtok (NULL, " ");
