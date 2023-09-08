@@ -2,8 +2,8 @@ import logging
 import lorem
 import random
 
-MACHINE_NUM = 1
-LINES = 1000
+MACHINE_NUM = 4
+LINES = 300000
 
 logging.basicConfig(filename=f"machine.{MACHINE_NUM}.log",
                     # filemode='a',
@@ -26,20 +26,30 @@ known_message_list = [("E", "This is an error message"),
 
 # Generate LINES number of logging lines in the log file.
 # For every 10th iteration, generate a known message from the known_message_list, or generate lorem ipsum with DEBUG level
+
+known_after_every = 18
+
 for i in range(LINES):
-    if i % 5 == 0:
-        known_message = random.choice(known_message_list)
-        message_level = known_message[0]
-        message = known_message[1]
-               
-        if message_level == "I":
-            logging.info(message)
-        elif message_level == "E":
-            logging.error(message)
-        elif message_level == "W":
-            logging.warning(message)
-        elif message_level == "C":
-            logging.critical(message)
+    print(i, end = '\r')
+    if i % known_after_every == 0:
+        
+        for k in range(1,6):
+            if (i - (k*known_after_every)) % (5*known_after_every) == 0:
+                known_message = known_message_list[k-1]
+
+                message_level = known_message[0]
+                message = known_message[1]
+                    
+                if message_level == "I":
+                    logging.info(message)
+                elif message_level == "E":
+                    logging.error(message)
+                elif message_level == "W":
+                    logging.warning(message)
+                elif message_level == "C":
+                    logging.critical(message)
+                
+                break
 
     else:
         # If random.choice = 1, generate a sentence, else generate a paragraph

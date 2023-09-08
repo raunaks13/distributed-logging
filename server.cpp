@@ -1,8 +1,6 @@
 #include <iostream>
 #include <stdlib.h>
-#include <string.h>
 #include <sys/types.h>
-#include <sys/select.h>
 #include <sys/time.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
@@ -11,13 +9,9 @@
 #include <unistd.h>
 #include <sys/types.h>
 #include <sys/wait.h>
-#include <fcntl.h> 
-#include <signal.h>
 #include <fcntl.h>
 #include <fstream>
-#include <regex>
-#include <sstream>
-#include <vector>
+#include <bits/stdc++.h>
 
 using namespace std;
 
@@ -116,6 +110,7 @@ int main(int argc, char *argv[]) {
 
         recv(server_newctrlsock_fd, cmnd, MAX, 0);
 
+        cout << cmnd << endl;
 
         char *args[MAX];
         char *word;

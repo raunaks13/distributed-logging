@@ -1,8 +1,6 @@
 #include <iostream>
 #include <stdlib.h>
-#include <string.h>
 #include <sys/types.h>
-#include <sys/select.h>
 #include <sys/time.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
@@ -12,16 +10,14 @@
 #include <sys/types.h>
 #include <sys/wait.h>
 #include <fcntl.h> 
-#include <signal.h>
-#include <fcntl.h>
 #include <fstream>
-#include <regex>
-#include <sstream>
-#include <vector>
+#include <chrono>
+#include <bits/stdc++.h>
+
 
 using namespace std;
+using namespace std::chrono;
 
-using namespace std;
 
 #define MAX 100			// Max length of commands
 #define BASE_PORT 8000
@@ -99,18 +95,19 @@ int main(int argc, char *argv[]) {
     vector<string> domains = { "fa23-cs425-3701.cs.illinois.edu", 
                                 "fa23-cs425-3702.cs.illinois.edu",
                                 "fa23-cs425-3703.cs.illinois.edu" 
-                                "fa23-cs425-3704.cs.illinois.edu" 
-                                "fa23-cs425-3705.cs.illinois.edu" 
-                                "fa23-cs425-3706.cs.illinois.edu" 
-                                "fa23-cs425-3707.cs.illinois.edu" 
-                                "fa23-cs425-3708.cs.illinois.edu" 
-                                "fa23-cs425-3709.cs.illinois.edu" 
-                                "fa23-cs425-3710.cs.illinois.edu" 
+                                // "fa23-cs425-3704.cs.illinois.edu" 
+                                // "fa23-cs425-3705.cs.illinois.edu" 
+                                // "fa23-cs425-3706.cs.illinois.edu" 
+                                // "fa23-cs425-3707.cs.illinois.edu" 
+                                // "fa23-cs425-3708.cs.illinois.edu" 
+                                // "fa23-cs425-3709.cs.illinois.edu" 
+                                // "fa23-cs425-3710.cs.illinois.edu" 
                              };
 
 
     char *MACHINE_NUM = argv[1];
     int PORT = BASE_PORT + stoi(MACHINE_NUM);
+
 
     // Find the log filename
     string filename = string("MP1 Demo Data FA22/vm") + MACHINE_NUM + ".log";
@@ -118,6 +115,7 @@ int main(int argc, char *argv[]) {
 
     // Prompt for grep commands
     cout << "[MACHINE " << MACHINE_NUM << "] Client Terminal Starting... \n";
+
     while(1) {
         string cmnd;
 
@@ -132,9 +130,14 @@ int main(int argc, char *argv[]) {
 
         int total_matches = 0;
 
-        for(int k = 1; k <= domains.size(); k++) {
+        auto start = high_resolution_clock::now();
+
+        for (int k = 1; k <= domains.size(); k++) {
+
+            char return_msg[MAX];
 
             if( k == stoi(MACHINE_NUM) ) {
+
                 cout << "Retrieving log data from current machine." << endl;
                 fstream logfile;
                 logfile.open(filename, ios::in);
@@ -155,12 +158,11 @@ int main(int argc, char *argv[]) {
                 // If logfile can be opened
                 if (logfile.is_open()) {
                     
-                    char read_msg[MAX];
-                    grep(read_msg, args);
+                    grep(return_msg, args);
 
-                    total_matches += stoi(read_msg);
+                    total_matches += stoi(return_msg);
                     
-                    string print_msg = "VM" + string(MACHINE_NUM) + ": " + read_msg;
+                    string print_msg = "VM" + string(MACHINE_NUM) + ": " + return_msg;
                     cout << print_msg;
                 }
 
@@ -169,51 +171,60 @@ int main(int argc, char *argv[]) {
 
             else {
 
-                int client_ctrlsock_fd;
-                struct sockaddr_in cli_addr, ctrlserv_addr;
+                try
+                {
+                    int client_ctrlsock_fd;
+                    struct sockaddr_in cli_addr, ctrlserv_addr;
 
-                if((client_ctrlsock_fd = socket(AF_INET, SOCK_STREAM, 0)) < 0) {
-                    perror("Socket creation failed\n");
-                    continue;
-                }
+                    
+                    if((client_ctrlsock_fd = socket(AF_INET, SOCK_STREAM, 0)) < 0) {
+                        perror("Socket creation failed\n");
+                    }
 
-                memset(&ctrlserv_addr, 0, sizeof(ctrlserv_addr));
-                memset(&cli_addr, 0, sizeof(cli_addr));
+                    memset(&ctrlserv_addr, 0, sizeof(ctrlserv_addr));
+                    memset(&cli_addr, 0, sizeof(cli_addr));
 
-                int PORT = BASE_PORT + k;
+                    int PORT = BASE_PORT + k;
 
-                // Specifying the address of the control server at server
-                ctrlserv_addr.sin_family = AF_INET;
-                // ctrlserv_addr.sin_addr.s_addr = INADDR_ANY;
-                ctrlserv_addr.sin_addr.s_addr = inet_addr(get_ip_from_domain(domains[k-1]));
-                ctrlserv_addr.sin_port = htons(PORT);
+                    // Specifying the address of the control server at server
+                    ctrlserv_addr.sin_family = AF_INET;
+                    ctrlserv_addr.sin_addr.s_addr = INADDR_ANY;
+                    // ctrlserv_addr.sin_addr.s_addr = inet_addr(get_ip_from_domain(domains[k-1]));
+                    ctrlserv_addr.sin_port = htons(PORT);
 
-                // Connecting to the control server
-                while(1) {
+                    // Connecting to the control server
                     int connect_status = connect(client_ctrlsock_fd, (struct sockaddr *)&ctrlserv_addr, sizeof(ctrlserv_addr));
-                    if( connect_status == 0)
-                        break;
+                    if (connect_status < 0)
+                        throw new exception;
+
+                    
+                    // Send grep command
+                    cout << "Sending: " << mssg << endl;
+                    int sz = send(client_ctrlsock_fd, mssg, strlen(mssg)+1, 0);
+                    if (sz < 1 && sizeof(mssg) < 1)
+                        throw new exception;
+
+                    // Receive input from other machines on the grep command
+                    cout << "Retrieving log data from machine " << k << endl;
+                    int sz2 = recv(client_ctrlsock_fd, return_msg, MAX, 0);
+
+                    total_matches += stoi(return_msg);
+                    
+                    string print_msg = "VM" + to_string(k) + ": " + return_msg;
+                    cout << print_msg;
+
+                    close(client_ctrlsock_fd);
                 }
+                catch (...) {}
 
-                // Send grep command
-                cout << "Sending: " << mssg << endl;
-                int sz = send(client_ctrlsock_fd, mssg, strlen(mssg)+1, 0);
-
-                // Receive input from other machines on the grep command
-                cout << "Retrieving log data from machine " << k << endl;
-                char return_msg[MAX];
-                int sz2 = recv(client_ctrlsock_fd, return_msg, MAX, 0);
-
-                total_matches += stoi(return_msg);
-                
-                string print_msg = "VM" + to_string(k) + ": " + return_msg;
-                cout << print_msg;
-
-                close(client_ctrlsock_fd);
             }
         }
 
-        cout << "Total Matches: " << total_matches << endl << endl;
+        auto stop = high_resolution_clock::now();
+        auto duration = duration_cast<microseconds>(stop - start);
+
+        cout << "Total Matches: " << total_matches << endl;
+        cout << "Time Taken: " << duration.count() << " microseconds" << endl << endl;
     }
 
 
