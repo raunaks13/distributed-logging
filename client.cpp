@@ -61,6 +61,7 @@ char* get_ip_from_domain(string domain) {
     strcpy(domain_name, domain.c_str());
 
 	// DNS query for IP address of the domain
+    cout << domain_name << endl;
 	ip = gethostbyname(domain_name);
 	if(ip == NULL){
 		printf("[Error] Incorrect Domain Name");
@@ -94,14 +95,14 @@ int main(int argc, char *argv[]) {
 
     vector<string> domains = { "fa23-cs425-3701.cs.illinois.edu", 
                                 "fa23-cs425-3702.cs.illinois.edu",
-                                "fa23-cs425-3703.cs.illinois.edu" 
-                                "fa23-cs425-3704.cs.illinois.edu" 
-                                // "fa23-cs425-3705.cs.illinois.edu" 
-                                // "fa23-cs425-3706.cs.illinois.edu" 
-                                // "fa23-cs425-3707.cs.illinois.edu" 
-                                // "fa23-cs425-3708.cs.illinois.edu" 
-                                // "fa23-cs425-3709.cs.illinois.edu" 
-                                // "fa23-cs425-3710.cs.illinois.edu" 
+                                "fa23-cs425-3703.cs.illinois.edu", 
+                                "fa23-cs425-3704.cs.illinois.edu",
+                                // "fa23-cs425-3705.cs.illinois.edu",
+                                // "fa23-cs425-3706.cs.illinois.edu" ,
+                                // "fa23-cs425-3707.cs.illinois.edu" ,
+                                // "fa23-cs425-3708.cs.illinois.edu" ,
+                                // "fa23-cs425-3709.cs.illinois.edu" ,
+                                // "fa23-cs425-3710.cs.illinois.edu" ,
                              };
 
 
@@ -215,7 +216,9 @@ int main(int argc, char *argv[]) {
 
                     close(client_ctrlsock_fd);
                 }
-                catch (...) {cout << k << " Exception";}
+                catch (...) {
+                    // cout << k << " Exception" << endl;
+                }
 
             }
         }
