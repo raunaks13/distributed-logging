@@ -22,7 +22,6 @@ char* get_ip_from_domain(string domain) {
     strcpy(domain_name, domain.c_str());
 
 	// DNS query for IP address of the domain
-    cout << domain_name << endl;
 	ip_addr = gethostbyname(domain_name);
 
     if(ip_addr != NULL)

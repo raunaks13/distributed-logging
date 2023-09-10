@@ -57,7 +57,6 @@ char* get_ip_from_domain(string domain) {
     strcpy(domain_name, domain.c_str());
 
 	// DNS query for IP address of the domain
-    cout << domain_name << endl;
 	ip = gethostbyname(domain_name);
 	if(ip == NULL){
 		printf("[Error] Incorrect Domain Name");
@@ -118,8 +117,8 @@ int main(int argc, char *argv[]) {
 
             // Specifying the address of the control server at server
             ctrlserv_addr.sin_family = AF_INET;
-            ctrlserv_addr.sin_addr.s_addr = INADDR_ANY;
-            // ctrlserv_addr.sin_addr.s_addr = inet_addr(get_ip_from_domain(domains[k-1]));
+            // ctrlserv_addr.sin_addr.s_addr = INADDR_ANY;
+            ctrlserv_addr.sin_addr.s_addr = inet_addr(get_ip_from_domain(domains[k-1]));
             ctrlserv_addr.sin_port = htons(PORT);
 
             // Connecting to the control server
