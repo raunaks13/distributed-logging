@@ -6,12 +6,10 @@
 #include <sys/wait.h>
 #include <netdb.h>
 
-
 using namespace std;
 
 #define MAX 100	
 #define BASE_PORT 8000
-
 
 void grep(char *read_msg, char **args) {
 
@@ -37,11 +35,9 @@ void grep(char *read_msg, char **args) {
     int byte_read_count = read(pipefd[0], read_msg, sizeof(read_msg));
     close(pipefd[0]);
 
-    // Adding null character to the end
     int last_index = byte_read_count/sizeof(read_msg[0]);
     read_msg[last_index] = '\0';
 }
-
 
 int main(int argc, char *argv[]) {
 
@@ -83,18 +79,16 @@ int main(int argc, char *argv[]) {
         exit(0);
     }
 
-    // Binding the control server
+    // Binding the server
     if(bind(server_ctrlsock_fd,(const struct sockaddr *)&serv_addr, sizeof(serv_addr)) < 0){
         perror("Binding error\n");
         exit(0);
     }
 
-    // Machine Running and accepting connections
+    // Machine accepting connections
     listen(server_ctrlsock_fd, 10);
     cout << "Server Running...\n";
 
-
-    // Machine is always running
     while(1) {
 
         clilen = sizeof(ctrlcli_addr);
@@ -102,7 +96,6 @@ int main(int argc, char *argv[]) {
         server_newctrlsock_fd = accept(server_ctrlsock_fd, (struct sockaddr *)&ctrlcli_addr, &clilen);
 
         recv(server_newctrlsock_fd, cmnd, MAX, 0);
-
 
         char *args[MAX];
         char *word = strtok (cmnd," ");
@@ -130,7 +123,6 @@ int main(int argc, char *argv[]) {
             cout << "Sent: " << send_msg << endl;
             logfile.close();
         }
-        
     }
 
     return 0;

@@ -8,15 +8,11 @@
 #include <netdb.h>
 #include <chrono>
 
-
 using namespace std;
 using namespace std::chrono;
 
-
 #define MAX 100			// Max length of commands
 #define BASE_PORT 8000
-
-
 
 char* get_ip_from_domain(string domain) {
 	struct hostent *ip_addr;
@@ -28,17 +24,16 @@ char* get_ip_from_domain(string domain) {
 	// DNS query for IP address of the domain
     cout << domain_name << endl;
 	ip_addr = gethostbyname(domain_name);
-	if(ip_addr == NULL){
-		printf("Domain Name is wrong");
-		exit(0);
-	}
-	addr = (struct in_addr **)ip_addr->h_addr_list;
+
+    if(ip_addr != NULL)
+	    addr = (struct in_addr **)ip_addr->h_addr_list;
+    else {
+        printf("Domain name is wrong");
+        exit(0);
+    }
     
 	return inet_ntoa(*addr[0]);
 }
-
-
-
 
 int main(int argc, char *argv[]) {
 
@@ -54,10 +49,8 @@ int main(int argc, char *argv[]) {
                                 // "fa23-cs425-3710.cs.illinois.edu" ,
                              };
 
-
     char *MACHINE_NUM = argv[1];
     int PORT = BASE_PORT + stoi(MACHINE_NUM);
-
 
     // Prompt for grep commands
     cout << "[MACHINE " << MACHINE_NUM << "] Client Terminal Starting... \n";
@@ -97,8 +90,8 @@ int main(int argc, char *argv[]) {
 
                 // Specifying the address of the control server at server
                 ctrlserv_addr.sin_family = AF_INET;
-                ctrlserv_addr.sin_addr.s_addr = INADDR_ANY;
-                // ctrlserv_addr.sin_addr.s_addr = inet_addr(get_ip_from_domain(domains[k-1]));
+                // ctrlserv_addr.sin_addr.s_addr = INADDR_ANY;
+                ctrlserv_addr.sin_addr.s_addr = inet_addr(get_ip_from_domain(domains[k-1]));
                 ctrlserv_addr.sin_port = htons(PORT);
 
                 // Connecting to the control server
