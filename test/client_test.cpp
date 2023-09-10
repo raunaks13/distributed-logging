@@ -77,7 +77,7 @@ int main(int argc, char *argv[]) {
     vector<string> domains = { "fa23-cs425-3701.cs.illinois.edu", 
                                 "fa23-cs425-3702.cs.illinois.edu",
                                 "fa23-cs425-3703.cs.illinois.edu", 
-                                "fa23-cs425-3704.cs.illinois.edu",
+                                // "fa23-cs425-3704.cs.illinois.edu",
                                 // "fa23-cs425-3705.cs.illinois.edu",
                                 // "fa23-cs425-3706.cs.illinois.edu" ,
                                 // "fa23-cs425-3707.cs.illinois.edu" ,
@@ -85,14 +85,6 @@ int main(int argc, char *argv[]) {
                                 // "fa23-cs425-3709.cs.illinois.edu" ,
                                 // "fa23-cs425-3710.cs.illinois.edu" ,
                              };
-
-
-    // char *MACHINE_NUM = argv[1];
-    // int PORT = BASE_PORT + stoi(MACHINE_NUM);
-
-
-    // Find the log filename
-    // string filename = string("MP1 Demo Data FA22/vm") + MACHINE_NUM + ".log";
 
 
 
@@ -147,7 +139,7 @@ int main(int argc, char *argv[]) {
             total_matches += stoi(return_msg);
             
             string print_msg = "VM" + to_string(k) + ": " + return_msg;
-            cout << print_msg;
+            // cout << print_msg;
 
             close(client_ctrlsock_fd);
         }
@@ -160,34 +152,28 @@ int main(int argc, char *argv[]) {
     auto duration = duration_cast<microseconds>(stop - start);
 
     cout << "Total Matches: " << total_matches << endl;
-    cout << "Time Taken: " << duration.count() << " microseconds" << endl << endl;
 
+
+    ///////////////////////////////////////////////////////
+
+    // Ground Truth Query for unit test
     
-    // string ground_truth_grep_mssg = "grep " + string(query) + " MP1\\ Demo\\ Data\\ FA22/* -c | awk -F: '{ g=g+$2 } END { print g }'";
-    // remove_leading_spaces(ground_truth_grep_mssg, mssg);
-    
-    // char *args[MAX];
-    // char *word;
-    // word = strtok (mssg," ");
-    // int i = 0;
-    // while (word != NULL){
-    //     args[i++] = word;
-    //     word = strtok (NULL, " ");
-    // }
-    // // Append NULL in the end
-    // args[i] = NULL;
+    // int n_logs_to_check = 3;
+    string ground_truth_grep_mssg = "grep " + string(query) + " MP1\\ Demo\\ Data\\ FA22/* -c | awk -F: '{ g=g+$2 } END { print g }'";
+    string final_query = ground_truth_grep_mssg + " > gt_output.txt";
 
-    char *query_msg;
-    strcpy(query_msg, query.c_str());
-    
+    cout << final_query << endl;
+    system(final_query.c_str());
 
-    char *args[] = {"grep", query_msg, "MP1\\ Demo\\ Data\\ FA22/*", "-c" , "|", "awk", "-F:", "{ g=g+$2 } ", "END", " { print g }"};
+    ifstream gt_out_file;
+    gt_out_file.open("gt_output.txt");
+    char line[MAX];
+    if (gt_out_file.is_open()) {
+        gt_out_file.getline(line, MAX);
+        gt_out_file.close();
+    }
 
-
-    char *gt_grep_mssg;
-    grep(gt_grep_mssg, args);
-    cout << gt_grep_mssg << endl;
-    int gt_total_match = stoi(gt_grep_mssg);
+    int gt_total_match = stoi(line);
 
     if (gt_total_match == total_matches)
         cout << "UNIT TEST PASSED :) !!" << endl << endl;
