@@ -20,6 +20,9 @@ using namespace std::chrono;
 
 
 void grep(char *read_msg, char **args) {
+    /*
+    Grep a document (through execvp) which is passed in args and stores the result in read_msg
+    */
 
     int pipefd[2];
     pipe(pipefd);
@@ -50,6 +53,10 @@ void grep(char *read_msg, char **args) {
 
 
 char* get_ip_from_domain(string domain) {
+    /*
+    Given a domain name, finds the ip address for the same
+    */
+
 	struct hostent *ip;
 	struct in_addr **adr;
 
@@ -59,12 +66,11 @@ char* get_ip_from_domain(string domain) {
 	// DNS query for IP address of the domain
 	ip = gethostbyname(domain_name);
 	if(ip == NULL){
-		printf("[Error] Incorrect Domain Name");
+		cerr << "Domain name is wrong" << endl;
 		exit(0);
 	}
 	adr = (struct in_addr **)ip->h_addr_list;
     
-    // cout << domain << inet_ntoa(*adr[0]) << endl;
 	return inet_ntoa(*adr[0]);
 }
 
@@ -87,68 +93,65 @@ int main(int argc, char *argv[]) {
 
 
 
-    string query = "Mozilla";
+    string pattern = "Mozilla";
 
-    string cmnd = "grep -c " + query;
+    string cmnd = "grep -c " + pattern;
     char mssg[MAX];
     strcpy(mssg, cmnd.c_str());
 
     int total_matches = 0;
 
-    auto start = high_resolution_clock::now();
 
+    // For every machine, connect to its specific socket and then send the grep command and get its result
     for (int k = 1; k <= domains.size(); k++) {
 
         char return_msg[MAX];
         try
         {
-            int client_ctrlsock_fd;
-            struct sockaddr_in cli_addr, ctrlserv_addr;
+            int client_sock_fd;
+            struct sockaddr_in cli_addr, serv_addr;
 
             
-            if((client_ctrlsock_fd = socket(AF_INET, SOCK_STREAM, 0)) < 0) {
-                perror("Socket creation failed\n");
+            if((client_sock_fd = socket(AF_INET, SOCK_STREAM, 0)) < 0) {
+                cerr << "Socket creation failed" << endl;
             }
 
-            memset(&ctrlserv_addr, 0, sizeof(ctrlserv_addr));
+            memset(&serv_addr, 0, sizeof(serv_addr));
             memset(&cli_addr, 0, sizeof(cli_addr));
 
             int PORT = BASE_PORT + k;
 
             // Specifying the address of the control server at server
-            ctrlserv_addr.sin_family = AF_INET;
+            serv_addr.sin_family = AF_INET;
             // ctrlserv_addr.sin_addr.s_addr = INADDR_ANY;
-            ctrlserv_addr.sin_addr.s_addr = inet_addr(get_ip_from_domain(domains[k-1]));
-            ctrlserv_addr.sin_port = htons(PORT);
+            serv_addr.sin_addr.s_addr = inet_addr(get_ip_from_domain(domains[k-1]));
+            serv_addr.sin_port = htons(PORT);
 
             // Connecting to the control server
-            int connect_status = connect(client_ctrlsock_fd, (struct sockaddr *)&ctrlserv_addr, sizeof(ctrlserv_addr));
+            int connect_status = connect(client_sock_fd, (struct sockaddr *)&serv_addr, sizeof(serv_addr));
             if (connect_status < 0)
                 throw new exception;
 
             
             // Send grep command
-            int sz = send(client_ctrlsock_fd, mssg, strlen(mssg)+1, 0);
+            int sz = send(client_sock_fd, mssg, strlen(mssg)+1, 0);
             if (sz < 1 && sizeof(mssg) < 1)
                 throw new exception;
 
             // Receive input from other machines on the grep command
-            int sz2 = recv(client_ctrlsock_fd, return_msg, MAX, 0);
+            int sz2 = recv(client_sock_fd, return_msg, MAX, 0);
 
             total_matches += stoi(return_msg);
             
             string print_msg = "VM" + to_string(k) + ": " + return_msg;
-            // cout << print_msg;
 
-            close(client_ctrlsock_fd);
+            close(client_sock_fd);
         }
         catch (...) {
         }
 
     }
 
-    auto stop = high_resolution_clock::now();
-    auto duration = duration_cast<microseconds>(stop - start);
 
     cout << "Total Matches: " << total_matches << endl;
 
@@ -158,10 +161,10 @@ int main(int argc, char *argv[]) {
     // Ground Truth Query for unit test
     
     // int n_logs_to_check = 3;
-    string ground_truth_grep_mssg = "grep " + string(query) + " MP1\\ Demo\\ Data\\ FA22/* -c | awk -F: '{ g=g+$2 } END { print g }'";
+    string ground_truth_grep_mssg = "grep " + string(pattern) + " MP1\\ Demo\\ Data\\ FA22/* -c | awk -F: '{ sum=sum+$2 } END { print sum }'";
     string final_query = ground_truth_grep_mssg + " > gt_output.txt";
 
-    cout << final_query << endl;
+    // Run the grep command to get the ground truth result
     system(final_query.c_str());
 
     ifstream gt_out_file;
@@ -173,7 +176,7 @@ int main(int argc, char *argv[]) {
     }
 
     int gt_total_match = stoi(line);
-
+    
     if (gt_total_match == total_matches)
         cout << "UNIT TEST PASSED :) !!" << endl << endl;
     else
