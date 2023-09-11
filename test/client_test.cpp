@@ -177,7 +177,7 @@ int main(int argc, char *argv[]) {
 
     int gt_total_match = stoi(line);
     cout << "Ground Truth Matches: " << gt_total_match << endl << endl;
-
+    
     if (gt_total_match == total_matches)
         cout << "UNIT TEST PASSED :) !!" << endl << endl;
     else

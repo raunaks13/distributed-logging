@@ -47,12 +47,12 @@ int main(int argc, char *argv[]) {
                                 "fa23-cs425-3702.cs.illinois.edu",
                                 "fa23-cs425-3703.cs.illinois.edu", 
                                 "fa23-cs425-3704.cs.illinois.edu",
-                                // "fa23-cs425-3705.cs.illinois.edu",
-                                // "fa23-cs425-3706.cs.illinois.edu" ,
-                                // "fa23-cs425-3707.cs.illinois.edu" ,
-                                // "fa23-cs425-3708.cs.illinois.edu" ,
-                                // "fa23-cs425-3709.cs.illinois.edu" ,
-                                // "fa23-cs425-3710.cs.illinois.edu" ,
+                                "fa23-cs425-3705.cs.illinois.edu",
+                                "fa23-cs425-3706.cs.illinois.edu",
+                                "fa23-cs425-3707.cs.illinois.edu",
+                                "fa23-cs425-3708.cs.illinois.edu",
+                                "fa23-cs425-3709.cs.illinois.edu",
+                                "fa23-cs425-3710.cs.illinois.edu",
                              };
 
     // get the machine number from the command line argument and assign port at which the server will run    
