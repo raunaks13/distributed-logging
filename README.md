@@ -1,11 +1,11 @@
-# CS-425 MP1
+# Distributed Logging
+
+This repository can be used to log files located across a distributed system with multiple virtual machines. A grep command needs to be entered at any client on a particular machine, and it will print out the output on the terminal. Regex queries are supported as well.
 
 ### Setup (run on each VM):
 
-1. `git clone https://gitlab.engr.illinois.edu/sc134/cs-425-mp1.git`
-2. `cd cs-425-mp1`
-3. Download log files and compile `server.cpp` and `client.cpp`: `bash setup_vm.sh`
-4. Start the server: `./server.out i`, where `i` is the corresponding machine (VM) number
+1. Download log files and compile `server.cpp` and `client.cpp`: `bash setup_vm.sh`
+2. Start the server: `./server.out i`, where `i` is the corresponding machine (VM) number
 
 Now, start the client on any machine of your choice, say machine k. Run `./client.out k`
 You will see a terminal prompt `>` where you can enter any grep commands. Enter commands in the format `grep XYZ`, **without** any quotes around the desired expression.
